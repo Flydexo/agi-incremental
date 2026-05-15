@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { gameState } from '../state/game.svelte'
+  import { gameState, addLabelTokens } from '../state/game.svelte'
   import { CONFIG } from '../game.config'
   import { formatMoney } from '../lib/format'
 
@@ -112,6 +112,7 @@
       const earned = effectivePay()
       gameState.money += earned
       gameState.moneyEver = Math.max(gameState.moneyEver, gameState.money)
+      addLabelTokens(1)
       totalFound++
       totalEarned += earned
 

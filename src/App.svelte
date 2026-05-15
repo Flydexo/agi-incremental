@@ -6,6 +6,7 @@
   import TokenStream from './components/TokenStream.svelte'
   import Dashboard from './components/Dashboard.svelte'
   import Store from './components/Store.svelte'
+  import PhaseToast from './components/PhaseToast.svelte'
 
   onMount(() => {
     initAnalytics()
@@ -34,6 +35,7 @@
   <Dashboard />
   <Store />
 </div>
+<PhaseToast />
 
 <style>
   .game-layout {

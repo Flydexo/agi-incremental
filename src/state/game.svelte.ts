@@ -24,6 +24,7 @@ export interface GameState {
   totalPlaytimeSeconds: number
   lastSaveTimestamp: number
   bpeCompleted: boolean
+  phaseJustUnlocked: number  // 0 = none, 2-5 = recently unlocked phase
 }
 
 function createInitialState(): GameState {
@@ -48,6 +49,7 @@ function createInitialState(): GameState {
     totalPlaytimeSeconds: 0,
     lastSaveTimestamp: Date.now(),
     bpeCompleted: false,
+    phaseJustUnlocked: 0,
   }
 }
 
@@ -149,16 +151,28 @@ export function getEnergyCostPerSecond(): number {
 }
 
 export function getDataTokensPerSecond(): number {
-  let rawTps = 0
+  let scraperTps = 0
   const scrapers = gameState.buildings.web_scraper ?? 0
   if (scrapers > 0) {
-    rawTps += (CONFIG.buildings.web_scraper as any).tokens_per_second * scrapers
+    scraperTps += (CONFIG.buildings.web_scraper as any).tokens_per_second * scrapers
   }
   const hasPipeline = (gameState.buildings.data_pipeline ?? 0) > 0
   const qualityMult = hasPipeline
     ? CONFIG.economy.data_quality_multipliers.pipeline_cleaned
     : CONFIG.economy.data_quality_multipliers.raw
-  return rawTps * qualityMult
+
+  // GPUs generate training tokens from the training-allocated compute share
+  // (simulating crawling, processing, and embedding computation)
+  const trainingFrac = (100 - gameState.inferencePercent) / 100
+  const gpuTokens = getTotalTflops() * trainingFrac * 20_000
+
+  return scraperTps * qualityMult + gpuTokens
+}
+
+// Called by DataLabeling on each correct cell click
+export function addLabelTokens(count: number): void {
+  // Each labeled sample is ~2K tokens of high-quality preference data
+  gameState.trainingDataTokens += count * 2_000
 }
 
 export function getGpuRentalIncome(): number {
@@ -226,10 +240,18 @@ export function purchaseTechnique(id: TechniqueId): boolean {
 
 export function updatePhase(): void {
   const t = CONFIG.phase_thresholds
-  if (gameState.tokensTrained >= (t.phase_5 as any).min_tokens_trained) { gameState.phase = 5; return }
-  if (gameState.tokensTrained >= (t.phase_4 as any).min_tokens_trained) { gameState.phase = 4; return }
-  if (getTotalTflops() >= (t.phase_3 as any).min_compute_tflops) { gameState.phase = 3; return }
-  if (gameState.moneyEver >= (t.phase_2 as any).min_money_ever) { gameState.phase = Math.max(2, gameState.phase) as any; return }
+  const prev = gameState.phase
+  let next = prev
+
+  if      (gameState.tokensTrained >= (t.phase_5 as any).min_tokens_trained) next = 5
+  else if (gameState.tokensTrained >= (t.phase_4 as any).min_tokens_trained) next = 4
+  else if (getTotalTflops() >= (t.phase_3 as any).min_compute_tflops) next = 3
+  else if (gameState.moneyEver >= (t.phase_2 as any).min_money_ever) next = Math.max(2, prev) as typeof prev
+
+  if (next > prev) {
+    gameState.phase = next as typeof gameState.phase
+    gameState.phaseJustUnlocked = next
+  }
 }
 
 // Tick: called every 100ms (0.1s)

@@ -52,10 +52,15 @@
         {@const affordable = canAfford(id)}
         {@const owned = gameState.buildings[id] ?? 0}
         {@const cost = getBuildingCost(id)}
-        <div class="item-card" class:locked={!unlocked} class:affordable>
+        {@const isNew = unlocked && owned === 0 && b.unlock_phase === gameState.phase}
+        <div class="item-card" class:locked={!unlocked} class:affordable class:is-new={isNew}>
           <div class="item-header">
             <span class="item-name">{b.label}</span>
-            <span class="item-owned muted">×{owned}</span>
+            {#if isNew}
+              <span class="new-badge">NEW</span>
+            {:else}
+              <span class="item-owned muted">×{owned}</span>
+            {/if}
           </div>
           <div class="item-stats">
             {#if b.tflops_fp16}
@@ -72,6 +77,9 @@
             {/if}
             {#if b.recurring_cost_per_s}
               <span class="warning">{formatMoney(b.recurring_cost_per_s)}/s</span>
+            {/if}
+            {#if b.rental_income_per_s}
+              <span class="money">+{formatMoney(b.rental_income_per_s)}/s rental</span>
             {/if}
           </div>
           {#if unlocked}
@@ -196,6 +204,24 @@
   .item-card.purchased {
     border-color: var(--color-money);
     background: #f0f8f0;
+  }
+
+  .item-card.is-new {
+    border-color: var(--color-warning);
+    box-shadow: 0 0 6px rgba(200, 131, 42, 0.3);
+    animation: new-pulse 2s ease-in-out infinite;
+  }
+
+  .new-badge {
+    font-size: 6px;
+    background: var(--color-warning);
+    color: white;
+    padding: 1px 4px;
+  }
+
+  @keyframes new-pulse {
+    0%, 100% { box-shadow: 0 0 4px rgba(200, 131, 42, 0.2); }
+    50%       { box-shadow: 0 0 10px rgba(200, 131, 42, 0.5); }
   }
 
   .item-header {
