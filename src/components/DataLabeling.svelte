@@ -220,8 +220,9 @@
   .grid {
     display: grid;
     grid-template-columns: repeat(var(--cols), 1fr);
-    gap: 4px;
+    gap: 6px;
     position: relative;
+    max-width: 240px;
   }
 
   .grid.all-found .cell {
@@ -265,7 +266,7 @@
   }
 
   .cell-emoji {
-    font-size: clamp(14px, 3vw, 22px);
+    font-size: 28px;
     line-height: 1;
     user-select: none;
   }

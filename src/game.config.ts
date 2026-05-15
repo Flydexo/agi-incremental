@@ -151,9 +151,9 @@ export const CONFIG = {
     },
     data_labeling: {
       enabled: true,
-      pay_per_correct: 0.10,
-      grid_size: 4,
-      round_time_ms: 5000,
+      pay_per_correct: 15,
+      grid_size: 3,
+      round_time_ms: 4000,
       target_min_count: 3,
       target_max_count: 5,
     },
