@@ -1,6 +1,7 @@
 <script lang="ts">
   import { gameState, getTokensPerSecond, getTotalTflops, getMarginPerSecond, getEnergyCostPerSecond, getTotalPowerDraw, getTotalPowerCapacity, getDataTokensPerSecond } from '../state/game.svelte'
   import { formatMoney, formatTokens, formatTflops } from '../lib/format'
+  import DataLabeling from './DataLabeling.svelte'
 
   let tps = $derived(getTokensPerSecond())
   let tflops = $derived(getTotalTflops())
@@ -86,10 +87,11 @@
     </div>
   </section>
 
-  {#if gameState.phase === 1 && !gameState.bpeCompleted}
+  <DataLabeling />
+
+  {#if gameState.phase === 1}
     <section class="hint-card">
-      <p>Save <span class="money">$1,500</span> to buy your first RTX 3090.</p>
-      <p class="muted">Label data in the store to earn money.</p>
+      <p>Goal: save <span class="money">$1,500</span> for your first RTX 3090.</p>
     </section>
   {/if}
 </main>
