@@ -35,6 +35,14 @@
   let totalEarned = $state(0)
   let timerStart = $state(Date.now())
 
+  // Combo system: consecutive perfect rounds (all found before timer)
+  let combo = $state(0)
+  const MAX_COMBO = 4   // caps at ×16
+  let comboFlash = $state(false)
+
+  function comboMultiplier(): number { return Math.pow(2, Math.min(combo, MAX_COMBO)) }
+  function effectivePay(): number { return pay_per_correct * comboMultiplier() }
+
   function shuffle<T>(arr: T[]): T[] {
     const a = [...arr]
     for (let i = a.length - 1; i > 0; i--) {
@@ -69,6 +77,20 @@
     timerStart = Date.now()
   }
 
+  function completeRound(perfect: boolean) {
+    roundDone = true
+    if (perfect) {
+      combo = Math.min(combo + 1, MAX_COMBO)
+      comboFlash = true
+      setTimeout(() => { comboFlash = false }, 600)
+      allFoundFlash = true
+      setTimeout(generateRound, 800)
+    } else {
+      combo = 0
+      generateRound()
+    }
+  }
+
   // Start first round immediately
   generateRound()
 
@@ -87,17 +109,16 @@
 
     if (cell.category === target.id) {
       cells[index] = { ...cell, found: true }
-      gameState.money += pay_per_correct
+      const earned = effectivePay()
+      gameState.money += earned
       gameState.moneyEver = Math.max(gameState.moneyEver, gameState.money)
       totalFound++
-      totalEarned += pay_per_correct
+      totalEarned += earned
 
       // Check if all target cells are found
       const nowFound = cells.filter(c => c.found).length
       if (nowFound >= targetTotal) {
-        allFoundFlash = true
-        roundDone = true
-        setTimeout(generateRound, 800)
+        completeRound(true)
       }
     } else {
       // Wrong — shake animation
@@ -117,8 +138,7 @@
       timerProgress = Math.min(elapsed / round_time_ms, 1)
 
       if (elapsed >= round_time_ms && !roundDone) {
-        roundDone = true
-        generateRound()
+        completeRound(false)
       }
 
       rafId = requestAnimationFrame(frame)
@@ -132,14 +152,23 @@
 <section class="mg1">
   <header class="mg1-header">
     <span class="mg1-title">DATA LABELING</span>
-    <span class="mg1-pay money">+{formatMoney(pay_per_correct)}/cell</span>
-    <span class="mg1-earned muted">{formatMoney(totalEarned)} earned</span>
+    <span class="mg1-pay money">+{formatMoney(effectivePay())}/cell</span>
+    {#if combo > 0}
+      <span class="combo-badge" class:flash={comboFlash}>
+        ×{comboMultiplier()} COMBO{combo >= MAX_COMBO ? ' MAX' : ''}
+      </span>
+    {:else}
+      <span class="mg1-earned muted">{formatMoney(totalEarned)} earned</span>
+    {/if}
   </header>
 
   <div class="mg1-prompt">
     Find all: <span class="target-icon">{target.emoji}</span>
     <strong>{target.label}</strong>
     <span class="found-count muted">({foundCount()}/{targetTotal})</span>
+    {#if combo === 0}
+      <span class="combo-hint muted">— finish fast for combo!</span>
+    {/if}
   </div>
 
   <div class="grid" class:all-found={allFoundFlash} style="--cols: {grid_size}">
@@ -195,6 +224,27 @@
 
   .mg1-pay  { font-size: 7px; }
   .mg1-earned { font-size: 6px; }
+
+  .combo-badge {
+    font-size: 7px;
+    color: var(--color-warning);
+    padding: 2px 4px;
+    border: 1px solid var(--color-warning);
+    background: #fff8e8;
+  }
+
+  .combo-badge.flash {
+    background: var(--color-warning);
+    color: white;
+    animation: combo-pop 0.6s ease;
+  }
+
+  .combo-hint { font-size: 6px; }
+
+  @keyframes combo-pop {
+    0%   { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
 
   .mg1-prompt {
     font-size: 7px;

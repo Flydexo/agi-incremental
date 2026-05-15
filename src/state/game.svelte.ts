@@ -161,9 +161,23 @@ export function getDataTokensPerSecond(): number {
   return rawTps * qualityMult
 }
 
+export function getGpuRentalIncome(): number {
+  let total = 0
+  const computeIds = ['rtx_3090', 'rtx_4090', 'h100_sxm', 'dgx_h100', 'gb200_nvl72', 'tpu_v5p', 'orbital_datacenter'] as const
+  for (const id of computeIds) {
+    const count = gameState.buildings[id] ?? 0
+    if (count > 0) {
+      const b = CONFIG.buildings[id] as any
+      if (b.rental_income_per_s) total += b.rental_income_per_s * count
+    }
+  }
+  // Rental income scales with inference allocation — when you train, you're not renting
+  return total * (gameState.inferencePercent / 100)
+}
+
 export function getMarginPerSecond(): number {
-  const revenue = getTokensPerSecond() * getCapabilityTier().price_per_million / 1_000_000
-  return revenue - getEnergyCostPerSecond()
+  const apiRevenue = getTokensPerSecond() * getCapabilityTier().price_per_million / 1_000_000
+  return apiRevenue + getGpuRentalIncome() - getEnergyCostPerSecond()
 }
 
 export function getBuildingCost(id: BuildingId): number {
@@ -224,7 +238,8 @@ export function tick(dtSeconds: number): void {
   const cost = getEnergyCostPerSecond() * dtSeconds
   const dataTps = getDataTokensPerSecond()
 
-  gameState.money += revenue - cost
+  const rental = getGpuRentalIncome() * dtSeconds
+  gameState.money += revenue + rental - cost
   gameState.moneyEver = Math.max(gameState.moneyEver, gameState.money + cost)
   gameState.trainingDataTokens += dataTps * dtSeconds
   gameState.tokensGenerated += getTokensPerSecond() * dtSeconds

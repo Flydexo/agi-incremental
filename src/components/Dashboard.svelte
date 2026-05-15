@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { gameState, getTokensPerSecond, getTotalTflops, getMarginPerSecond, getEnergyCostPerSecond, getTotalPowerDraw, getTotalPowerCapacity, getDataTokensPerSecond } from '../state/game.svelte'
+  import { gameState, getTokensPerSecond, getTotalTflops, getMarginPerSecond, getEnergyCostPerSecond, getTotalPowerDraw, getTotalPowerCapacity, getDataTokensPerSecond, getGpuRentalIncome } from '../state/game.svelte'
   import { formatMoney, formatTokens, formatTflops } from '../lib/format'
   import DataLabeling from './DataLabeling.svelte'
   import TrainingRun from './TrainingRun.svelte'
@@ -8,6 +8,7 @@
   let tflops = $derived(getTotalTflops())
   let margin = $derived(getMarginPerSecond())
   let energyCost = $derived(getEnergyCostPerSecond())
+  let rental = $derived(getGpuRentalIncome())
   let powerDraw = $derived(getTotalPowerDraw())
   let powerCap = $derived(getTotalPowerCapacity() * 1000)
   let dataTps = $derived(getDataTokensPerSecond())
@@ -26,10 +27,8 @@
 
   <section class="stats-grid">
     <div class="stat-card">
-      <div class="stat-label">REVENUE/s</div>
-      <div class="stat-value money">
-        {formatMoney(margin > 0 ? margin + energyCost : 0)}/s
-      </div>
+      <div class="stat-label">RENTAL/s</div>
+      <div class="stat-value money">{formatMoney(rental)}/s</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">MARGIN/s</div>
