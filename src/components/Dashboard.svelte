@@ -2,6 +2,7 @@
   import { gameState, getTokensPerSecond, getTotalTflops, getMarginPerSecond, getEnergyCostPerSecond, getTotalPowerDraw, getTotalPowerCapacity, getDataTokensPerSecond } from '../state/game.svelte'
   import { formatMoney, formatTokens, formatTflops } from '../lib/format'
   import DataLabeling from './DataLabeling.svelte'
+  import TrainingRun from './TrainingRun.svelte'
 
   let tps = $derived(getTokensPerSecond())
   let tflops = $derived(getTotalTflops())
@@ -89,11 +90,7 @@
 
   <DataLabeling />
 
-  {#if gameState.phase === 1}
-    <section class="hint-card">
-      <p>Goal: save <span class="money">$1,500</span> for your first RTX 3090.</p>
-    </section>
-  {/if}
+  <TrainingRun />
 </main>
 
 <style>
