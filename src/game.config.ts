@@ -150,8 +150,12 @@ export const CONFIG = {
       target_merges: 50, perfect_bonus: 1.15, avg_bonus: 1.05,
     },
     data_labeling: {
-      enabled: true, pay_per_label: 0.02,
-      pair_interval_ms: 3000, min_pair_interval_ms: 1500,
+      enabled: true,
+      pay_per_correct: 0.10,
+      grid_size: 4,
+      round_time_ms: 5000,
+      target_min_count: 3,
+      target_max_count: 5,
     },
     hyperparameter_tuning: {
       enabled: true,
