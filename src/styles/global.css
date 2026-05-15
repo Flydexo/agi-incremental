@@ -1,0 +1,51 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-bg: #f5f0e8;
+  --color-text: #2c1810;
+  --color-money: #3d6b35;
+  --color-warning: #c8832a;
+  --color-compute: #4a7fa5;
+  --color-border: #8b6914;
+  --color-error: #8b3a3a;
+  --color-panel-bg: #ede5d0;
+  --color-card-bg: #faf6ee;
+  --color-locked: #9a9080;
+  --font-pixel: 'Press Start 2P', monospace;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-pixel);
+  font-size: 10px;
+}
+
+#app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Pixel-art rendering */
+img, svg, canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-panel-bg); }
+::-webkit-scrollbar-thumb { background: var(--color-border); }
+
+/* Common utilities */
+.money { color: var(--color-money); }
+.warning { color: var(--color-warning); }
+.compute { color: var(--color-compute); }
+.muted { color: var(--color-locked); }
