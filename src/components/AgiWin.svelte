@@ -1,8 +1,6 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
   import { gameState, resetGame } from '../state/game.svelte'
   import { formatTokens, formatMoney } from '../lib/format'
-  import { capture } from '../lib/analytics'
 
   function formatDuration(s: number): string {
     const h = Math.floor(s / 3600)
@@ -10,16 +8,12 @@
     if (h > 0) return `${h}h ${m}m`
     return `${m}m ${Math.floor(s % 60)}s`
   }
-
-  onMount(() => {
-    capture('agi_achieved', { playtime_s: gameState.totalPlaytimeSeconds, total_runs: gameState.trainingRunsCompleted })
-  })
 </script>
 
 <div class="agi-backdrop">
     <div class="agi-panel">
       <div class="agi-title">AGI ACHIEVED</div>
-      <div class="agi-subtitle">You trained a model that surpasses human-level performance across all domains.</div>
+      <div class="agi-subtitle">You trained the model that ends history.</div>
 
       <div class="agi-stats">
         <div class="stat-row">
