@@ -302,18 +302,15 @@ export function startTrainingRun(): boolean {
 export function tickTraining(dtSeconds: number): void {
   if (!gameState.isTrainingRunning) return
   const trainingFrac = (100 - gameState.inferencePercent) / 100
-  const speedMult = Math.max(trainingFrac, 0.1)  // at least 10% speed even at 0% training allocation
+  const speedMult = Math.max(trainingFrac, 0.1)
   gameState.trainingProgress += (dtSeconds / TRAINING_DURATION_S) * speedMult
   if (gameState.trainingProgress >= 1) {
-    // Run complete
-    gameState.trainingProgress = 1
-    gameState.isTrainingRunning = false
-    const tokensConsumed = getTokensRequiredForRun() / TOKENS_PER_RUN_SCALE  // what was consumed
-    gameState.tokensTrained += tokensConsumed * gameState.bpeMultiplier
-    gameState.modelScore += 1
+    const tokensConsumed = getTokensRequiredForRun() / TOKENS_PER_RUN_SCALE
+    const capabilityGain = tokensConsumed * gameState.bpeMultiplier * (1 + gameState.hyperparamBonus)
+    gameState.tokensTrained += capabilityGain
+    gameState.modelScore += 1 + gameState.hyperparamBonus
     gameState.trainingRunsCompleted++
-    // Unlock next hyperparameter slider
-    if (gameState.unlockedSliders < 5) gameState.unlockedSliders++
+    gameState.isTrainingRunning = false
     gameState.trainingProgress = 0
     updatePhase()
   }
