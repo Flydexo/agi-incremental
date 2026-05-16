@@ -348,6 +348,11 @@ export function updatePhase(): void {
     gameState.phaseJustUnlocked = next
     capture('phase_entered', { phase: next, playtime_s: gameState.totalPlaytimeSeconds })
   }
+
+  if (gameState.tokensTrained >= 1e13 && !gameState.agiAchieved) {
+    gameState.agiAchieved = true
+    capture('agi_achieved', { playtime_s: gameState.totalPlaytimeSeconds, runs: gameState.trainingRunsCompleted })
+  }
 }
 
 // Tick: called every 100ms (0.1s)

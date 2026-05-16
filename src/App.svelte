@@ -8,6 +8,7 @@
   import Store from './components/Store.svelte'
   import PhaseToast from './components/PhaseToast.svelte'
   import WelcomeBack from './components/WelcomeBack.svelte'
+  import AgiWin from './components/AgiWin.svelte'
 
   onMount(() => {
     initAnalytics()
@@ -38,6 +39,9 @@
 </div>
 <PhaseToast />
 <WelcomeBack />
+{#if gameState.agiAchieved}
+  <AgiWin />
+{/if}
 
 <style>
   .game-layout {

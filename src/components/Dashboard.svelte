@@ -7,6 +7,7 @@
   import DataQualityFilter from './DataQualityFilter.svelte'
   import RLHFLabeling from './RLHFLabeling.svelte'
   import BenchmarkEval from './BenchmarkEval.svelte'
+  import PipelineScheduler from './PipelineScheduler.svelte'
 
   let labelingOpen = $state(true)
 
@@ -133,6 +134,7 @@
   </div>
 
   <TrainingRun />
+  <PipelineScheduler />
   <DataQualityFilter />
   <RLHFLabeling />
   <BenchmarkEval />
