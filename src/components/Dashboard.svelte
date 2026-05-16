@@ -6,6 +6,7 @@
   import Settings from './Settings.svelte'
   import DataQualityFilter from './DataQualityFilter.svelte'
   import RLHFLabeling from './RLHFLabeling.svelte'
+  import BenchmarkEval from './BenchmarkEval.svelte'
 
   let labelingOpen = $state(true)
 
@@ -134,6 +135,7 @@
   <TrainingRun />
   <DataQualityFilter />
   <RLHFLabeling />
+  <BenchmarkEval />
 </main>
 
 <style>
