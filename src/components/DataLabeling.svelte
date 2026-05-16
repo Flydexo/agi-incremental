@@ -2,6 +2,7 @@
   import { gameState, addLabelTokens } from '../state/game.svelte'
   import { CONFIG } from '../game.config'
   import { formatMoney } from '../lib/format'
+  import { capture } from '../lib/analytics'
 
   const { pay_per_correct, grid_size, round_time_ms, target_min_count, target_max_count } =
     CONFIG.minigames.data_labeling
@@ -80,7 +81,11 @@
   function completeRound(perfect: boolean) {
     roundDone = true
     if (perfect) {
+      const prevCombo = combo
       combo = Math.min(combo + 1, MAX_COMBO)
+      if (prevCombo < MAX_COMBO && combo >= MAX_COMBO) {
+        capture('labeling_max_combo', { playtime_s: gameState.totalPlaytimeSeconds })
+      }
       comboFlash = true
       setTimeout(() => { comboFlash = false }, 600)
       allFoundFlash = true
