@@ -38,7 +38,7 @@
 
   // Combo system: consecutive perfect rounds (all found before timer)
   let combo = $state(0)
-  const MAX_COMBO = getFlag<number>('max_combo', 256)
+  const MAX_COMBO = getFlag<number>('max_combo', 10)
   let comboFlash = $state(false)
 
   function comboMultiplier(): number { return Math.pow(2, Math.min(combo, MAX_COMBO)) }
