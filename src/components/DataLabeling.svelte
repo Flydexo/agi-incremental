@@ -2,7 +2,7 @@
   import { gameState, addLabelTokens } from '../state/game.svelte'
   import { CONFIG } from '../game.config'
   import { formatMoney } from '../lib/format'
-  import { capture } from '../lib/analytics'
+  import { capture, getFlag } from '../lib/analytics'
 
   const { pay_per_correct, grid_size, round_time_ms, target_min_count, target_max_count } =
     CONFIG.minigames.data_labeling
@@ -38,7 +38,7 @@
 
   // Combo system: consecutive perfect rounds (all found before timer)
   let combo = $state(0)
-  const MAX_COMBO = 4   // caps at ×16
+  const MAX_COMBO = getFlag<number>('max_combo', 256)
   let comboFlash = $state(false)
 
   function comboMultiplier(): number { return Math.pow(2, Math.min(combo, MAX_COMBO)) }
