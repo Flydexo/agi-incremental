@@ -316,8 +316,17 @@ export function tickTraining(dtSeconds: number): void {
   }
 }
 
+// Offline progress notification — not persisted, just shown once on load
+export const offlineNotif = $state<{ money: number; tokens: number; elapsedS: number } | null>({ money: 0, tokens: 0, elapsedS: 0 })
+
+export function clearOfflineNotif(): void {
+  offlineNotif!.money = 0
+  offlineNotif!.elapsedS = 0
+}
+
 // Save/load
 export function serializeState(): string {
+  gameState.lastSaveTimestamp = Date.now()
   return JSON.stringify({
     ...gameState,
     techniques: [...gameState.techniques],
@@ -330,8 +339,60 @@ export function loadState(json: string): void {
     Object.assign(gameState, {
       ...parsed,
       techniques: new Set(parsed.techniques ?? []),
+      isTrainingRunning: false,  // never resume mid-run offline
+      trainingProgress: 0,
+      phaseJustUnlocked: 0,
     })
+
+    const savedAt = parsed.lastSaveTimestamp ?? Date.now()
+    const rawElapsed = (Date.now() - savedAt) / 1000
+    const elapsedS = Math.min(rawElapsed, CONFIG.save.offline_cap_hours * 3600)
+
+    if (elapsedS > 5) {
+      const moneyGained  = getMarginPerSecond() * elapsedS
+      const tokensGained = getDataTokensPerSecond() * elapsedS
+      gameState.money              += moneyGained
+      gameState.moneyEver           = Math.max(gameState.moneyEver, gameState.money)
+      gameState.trainingDataTokens += tokensGained
+      gameState.tokensGenerated    += getTokensPerSecond() * elapsedS
+      gameState.totalPlaytimeSeconds += elapsedS
+      updatePhase()
+
+      if (offlineNotif) {
+        offlineNotif.money    = moneyGained
+        offlineNotif.tokens   = tokensGained
+        offlineNotif.elapsedS = elapsedS
+      }
+    }
   } catch {
     console.warn('Failed to load save state')
   }
+}
+
+export function resetGame(): void {
+  const fresh = {
+    money: CONFIG.economy.starting_money,
+    moneyEver: CONFIG.economy.starting_money,
+    trainingDataTokens: 0,
+    tokensGenerated: 0,
+    tokensTrained: 0,
+    modelScore: 0,
+    phase: 1 as const,
+    inferencePercent: 60,
+    buildings: {} as typeof gameState.buildings,
+    techniques: new Set<TechniqueId>(),
+    labelerCount: 0,
+    bpeMultiplier: 1.0,
+    hyperparamBonus: 0,
+    unlockedSliders: 0,
+    trainingRunsCompleted: 0,
+    isTrainingRunning: false,
+    trainingProgress: 0,
+    totalPlaytimeSeconds: 0,
+    lastSaveTimestamp: Date.now(),
+    bpeCompleted: false,
+    phaseJustUnlocked: 0,
+  }
+  Object.assign(gameState, fresh)
+  localStorage.removeItem(CONFIG.save.localstorage_key)
 }

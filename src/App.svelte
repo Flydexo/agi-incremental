@@ -7,6 +7,7 @@
   import Dashboard from './components/Dashboard.svelte'
   import Store from './components/Store.svelte'
   import PhaseToast from './components/PhaseToast.svelte'
+  import WelcomeBack from './components/WelcomeBack.svelte'
 
   onMount(() => {
     initAnalytics()
@@ -36,6 +37,7 @@
   <Store />
 </div>
 <PhaseToast />
+<WelcomeBack />
 
 <style>
   .game-layout {

@@ -3,6 +3,9 @@
   import { formatMoney, formatTokens, formatTflops } from '../lib/format'
   import DataLabeling from './DataLabeling.svelte'
   import TrainingRun from './TrainingRun.svelte'
+  import Settings from './Settings.svelte'
+
+  let labelingOpen = $state(true)
 
   let tps      = $derived(getTokensPerSecond())
   let tflops   = $derived(getTotalTflops())
@@ -33,6 +36,7 @@
   <header class="dash-header">
     <span class="phase-label">Phase {gameState.phase}: {getPhaseLabel(gameState.phase)}</span>
     <span class="money money-display">{formatMoney(gameState.money)}</span>
+    <Settings />
   </header>
 
   <!-- Model capability card -->
@@ -116,7 +120,14 @@
     </div>
   </section>
 
-  <DataLabeling />
+  <div class="section-wrap">
+    <button class="section-toggle" onclick={() => labelingOpen = !labelingOpen}>
+      DATA LABELING {labelingOpen ? '▲' : '▼'}
+    </button>
+    {#if labelingOpen}
+      <DataLabeling />
+    {/if}
+  </div>
 
   <TrainingRun />
 </main>
@@ -195,6 +206,31 @@
 
   .money-display {
     font-size: 14px;
+    flex: 1;
+    text-align: center;
+  }
+
+  .section-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .section-toggle {
+    font-family: var(--font-pixel);
+    font-size: 6px;
+    padding: 5px 8px;
+    background: #e8dfc8;
+    border: 1px solid var(--color-border);
+    color: var(--color-locked);
+    cursor: pointer;
+    text-align: left;
+    letter-spacing: 1px;
+  }
+
+  .section-toggle:hover {
+    background: var(--color-border);
+    color: var(--color-bg);
   }
 
   .stats-grid {
