@@ -1,4 +1,5 @@
 import { CONFIG } from '../game.config'
+import { capture } from '../lib/analytics'
 
 export type BuildingId = keyof typeof CONFIG.buildings
 export type TechniqueId = keyof typeof CONFIG.techniques
@@ -25,6 +26,13 @@ export interface GameState {
   lastSaveTimestamp: number
   bpeCompleted: boolean
   phaseJustUnlocked: number  // 0 = none, 2-5 = recently unlocked phase
+  dataQualityMultiplier: number
+  rlhfQualityMultiplier: number
+  rewardHackingMeter: number  // 0–1
+  benchmarkTierOverride: number  // 0 = off, 1–5 = tier index
+  pipelineSchedulerDone: boolean
+  pipelineBubbleBonus: number  // 0–1
+  agiAchieved: boolean
 }
 
 function createInitialState(): GameState {
@@ -50,6 +58,13 @@ function createInitialState(): GameState {
     lastSaveTimestamp: Date.now(),
     bpeCompleted: false,
     phaseJustUnlocked: 0,
+    dataQualityMultiplier: 1.0,
+    rlhfQualityMultiplier: 1.0,
+    rewardHackingMeter: 0,
+    benchmarkTierOverride: 0,
+    pipelineSchedulerDone: false,
+    pipelineBubbleBonus: 0,
+    agiAchieved: false,
   }
 }
 
@@ -91,6 +106,10 @@ export function getPowerEfficiency(): number {
 }
 
 export function getCapabilityTier(): typeof CONFIG.economy.capability_tiers[number] {
+  if (gameState.benchmarkTierOverride > 0) {
+    const idx = Math.min(gameState.benchmarkTierOverride - 1, CONFIG.economy.capability_tiers.length - 1)
+    return CONFIG.economy.capability_tiers[idx]
+  }
   const tiers = [...CONFIG.economy.capability_tiers].reverse()
   return tiers.find(t => gameState.tokensTrained >= t.min_tokens_trained) ?? CONFIG.economy.capability_tiers[0]
 }
@@ -100,7 +119,8 @@ export function getTokensPerSecond(): number {
   const efficiency = getPowerEfficiency()
   const inferenceFrac = gameState.inferencePercent / 100
   // rough: 1 TFLOP/s ≈ 1 token/s at this abstraction level
-  return tflops * efficiency * inferenceFrac
+  const tm = getTechMultipliers()
+  return tflops * efficiency * inferenceFrac * tm.computeSpeed * tm.inferenceSpeed
 }
 
 export function getRevenuePer100Ms(): number {
@@ -166,7 +186,25 @@ export function getDataTokensPerSecond(): number {
   const trainingFrac = (100 - gameState.inferencePercent) / 100
   const gpuTokens = getTotalTflops() * trainingFrac * 20_000
 
-  return scraperTps * qualityMult + gpuTokens
+  return (scraperTps * qualityMult + gpuTokens) * gameState.dataQualityMultiplier
+}
+
+export function applyDataQualityBonus(v: number): void {
+  gameState.dataQualityMultiplier = v
+}
+
+export function addRlhfLabel(correct: boolean): void {
+  if (correct) {
+    gameState.rewardHackingMeter = Math.min(1, gameState.rewardHackingMeter + 0.02)
+    gameState.rlhfQualityMultiplier = Math.max(0.5, 1.5 - gameState.rewardHackingMeter)
+  } else {
+    gameState.rewardHackingMeter = Math.max(0, gameState.rewardHackingMeter - 0.05)
+    gameState.rlhfQualityMultiplier = Math.max(0.5, 1.5 - gameState.rewardHackingMeter)
+  }
+}
+
+export function setBenchmarkTier(tier: number): void {
+  gameState.benchmarkTierOverride = tier
 }
 
 // Called by DataLabeling on each correct cell click
@@ -187,6 +225,58 @@ export function getGpuRentalIncome(): number {
   }
   // Rental income scales with inference allocation — when you train, you're not renting
   return total * (gameState.inferencePercent / 100)
+}
+
+export interface TechMultipliers {
+  computeSpeed: number     // multiplies effective TFLOPs (training + inference)
+  inferenceSpeed: number   // multiplies tokens/sec output
+  trainingQuality: number  // multiplies tokensTrained per run
+  trainingSpeedBoost: number // multiplies training progress rate
+}
+
+export function getTotalGpuCount(): number {
+  const gpuIds = ['rtx_3090','rtx_4090','h100_sxm','dgx_h100','gb200_nvl72','tpu_v5p'] as const
+  return gpuIds.reduce((sum, id) => sum + (gameState.buildings[id] ?? 0), 0)
+}
+
+export function getTechMultipliers(): TechMultipliers {
+  const t = gameState.techniques
+  let computeSpeed = 1.0
+  let inferenceSpeed = 1.0
+  let trainingQuality = 1.0
+  let trainingSpeedBoost = 1.0
+
+  if (t.has('mixed_precision_fp16'))  computeSpeed     *= 1.40
+  if (t.has('flash_attention'))       computeSpeed     *= 1.10
+  if (t.has('bf16_training'))         computeSpeed     *= 1.05
+  if (t.has('fp8_training'))          computeSpeed     *= 1.50  // H100+ only in lore, always apply for simplicity
+  if (t.has('gradient_checkpointing'))trainingSpeedBoost *= 0.85  // trades speed for memory
+  if (t.has('zero_stage_1'))          trainingSpeedBoost *= 1.05
+  if (t.has('zero_stage_2'))          trainingSpeedBoost *= 1.08
+  if (t.has('zero_stage_3'))          trainingSpeedBoost *= 1.12
+  if (t.has('adamw_optimizer'))       trainingQuality  *= 1.05
+  if (t.has('cosine_lr_schedule'))    trainingQuality  *= 1.05
+  if (t.has('gradient_clipping'))     trainingQuality  *= 1.03
+  if (t.has('rlhf'))                  trainingQuality  *= 1.80 * gameState.rlhfQualityMultiplier
+  if (t.has('mixture_of_experts'))    trainingQuality  *= 1.50
+  if (t.has('speculative_decoding'))  inferenceSpeed   *= 2.50
+  if (t.has('continuous_batching'))   inferenceSpeed   *= 1.40
+  if (t.has('int8_quantization'))     inferenceSpeed   *= 1.80
+  if (t.has('grouped_query_attention'))inferenceSpeed  *= 1.30
+
+  // 5D parallelism — each technique multiplies compute speed
+  if (t.has('data_parallelism'))    computeSpeed *= (1 + Math.min(getTotalGpuCount(), 16) * 0.06)
+  if (t.has('tensor_parallelism'))  computeSpeed *= 1.25
+  if (t.has('pipeline_parallelism'))computeSpeed *= 1.20
+  if (t.has('sequence_parallelism'))trainingQuality *= 1.30  // longer context = better training
+  if (t.has('expert_parallelism') && t.has('mixture_of_experts')) computeSpeed *= 2.0
+
+  // Pipeline scheduler bonus
+  if (t.has('pipeline_parallelism') && gameState.pipelineSchedulerDone) {
+    computeSpeed *= (1 + gameState.pipelineBubbleBonus * 0.4)  // up to +40% from perfect schedule
+  }
+
+  return { computeSpeed, inferenceSpeed, trainingQuality, trainingSpeedBoost }
 }
 
 export function getMarginPerSecond(): number {
@@ -218,8 +308,12 @@ export function isBuildingUnlocked(id: BuildingId): boolean {
 export function purchaseBuilding(id: BuildingId): boolean {
   if (!canAfford(id) || !isBuildingUnlocked(id)) return false
   const cost = getBuildingCost(id)
+  const owned = gameState.buildings[id] ?? 0
   gameState.money -= cost
-  gameState.buildings[id] = (gameState.buildings[id] ?? 0) + 1
+  gameState.buildings[id] = owned + 1
+  if (id === 'rtx_3090' && owned === 0) {
+    capture('first_gpu_purchased', { playtime_s: gameState.totalPlaytimeSeconds, money_at_time: gameState.money })
+  }
   return true
 }
 
@@ -235,6 +329,7 @@ export function purchaseTechnique(id: TechniqueId): boolean {
   if (gameState.money < t.cost) return false
   gameState.money -= t.cost
   gameState.techniques.add(id)
+  capture('technique_purchased', { technique: id, cost: t.cost, phase: gameState.phase })
   return true
 }
 
@@ -251,6 +346,7 @@ export function updatePhase(): void {
   if (next > prev) {
     gameState.phase = next as typeof gameState.phase
     gameState.phaseJustUnlocked = next
+    capture('phase_entered', { phase: next, playtime_s: gameState.totalPlaytimeSeconds })
   }
 }
 
@@ -302,16 +398,18 @@ export function startTrainingRun(): boolean {
 export function tickTraining(dtSeconds: number): void {
   if (!gameState.isTrainingRunning) return
   const trainingFrac = (100 - gameState.inferencePercent) / 100
-  const speedMult = Math.max(trainingFrac, 0.1)
+  const tm = getTechMultipliers()
+  const speedMult = Math.max(trainingFrac, 0.1) * tm.trainingSpeedBoost
   gameState.trainingProgress += (dtSeconds / TRAINING_DURATION_S) * speedMult
   if (gameState.trainingProgress >= 1) {
     const tokensConsumed = getTokensRequiredForRun() / TOKENS_PER_RUN_SCALE
-    const capabilityGain = tokensConsumed * gameState.bpeMultiplier * (1 + gameState.hyperparamBonus)
+    const capabilityGain = tokensConsumed * gameState.bpeMultiplier * (1 + gameState.hyperparamBonus) * tm.trainingQuality
     gameState.tokensTrained += capabilityGain
     gameState.modelScore += 1 + gameState.hyperparamBonus
     gameState.trainingRunsCompleted++
     gameState.isTrainingRunning = false
     gameState.trainingProgress = 0
+    capture('training_run_completed', { run: gameState.trainingRunsCompleted, tokens_trained: gameState.tokensTrained, bonus: gameState.hyperparamBonus })
     updatePhase()
   }
 }
@@ -392,6 +490,13 @@ export function resetGame(): void {
     lastSaveTimestamp: Date.now(),
     bpeCompleted: false,
     phaseJustUnlocked: 0,
+    dataQualityMultiplier: 1.0,
+    rlhfQualityMultiplier: 1.0,
+    rewardHackingMeter: 0,
+    benchmarkTierOverride: 0,
+    pipelineSchedulerDone: false,
+    pipelineBubbleBonus: 0,
+    agiAchieved: false,
   }
   Object.assign(gameState, fresh)
   localStorage.removeItem(CONFIG.save.localstorage_key)

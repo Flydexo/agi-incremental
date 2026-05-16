@@ -150,6 +150,11 @@ export const CONFIG = {
     speculative_decoding: { cost: 600000, phase: 4, label: "Speculative Decoding", effect: "inference_throughput", value: 2.5, tooltip: "A small draft model proposes several tokens; the big model verifies them all in one pass." },
     continuous_batching: { cost: 100000, phase: 4, label: "Continuous Batching", effect: "gpu_utilization", value: 1.40, tooltip: "Requests join and leave the inference batch dynamically." },
     int8_quantization: { cost: 180000, phase: 4, label: "INT8 Quantization", effect: "inference_compute", value: 0.50, tooltip: "Round weights from 32-bit floats to 8-bit integers post-training." },
+    data_parallelism: { cost: 50000, phase: 3, label: "Data Parallelism", effect: "throughput_linear", value: 1.0, tooltip: "Run N model copies on N GPUs, each on different data. Average gradients after each step. Linear throughput scaling with GPU count." },
+    tensor_parallelism: { cost: 150000, phase: 3, label: "Tensor Parallelism", effect: "large_model", value: 1.0, tooltip: "Split weight matrices across GPUs. Enables models too large for one GPU. Megatron-LM pioneered this." },
+    pipeline_parallelism: { cost: 400000, phase: 3, label: "Pipeline Parallelism", effect: "layer_scale", value: 1.0, tooltip: "Assign model layers to GPUs like an assembly line. GPUs work in parallel on different micro-batches." },
+    sequence_parallelism: { cost: 600000, phase: 3, label: "Sequence Parallelism", effect: "context_length", value: 4.0, tooltip: "Split the sequence across GPUs. Activation memory scales with sequence length — this multiplies effective context ×4." },
+    expert_parallelism: { cost: 1000000, phase: 4, label: "Expert Parallelism", effect: "moe_scale", value: 2.0, tooltip: "Each MoE expert lives on a different GPU. Linear compute scaling with expert count. Requires MoE." },
   },
   minigames: {
     bpe: {
