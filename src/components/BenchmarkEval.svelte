@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { gameState, setBenchmarkTier } from '../state/game.svelte'
   import { CONFIG } from '../game.config'
+  import { capture } from '../lib/analytics'
 
   const QUESTIONS = [
     { q: "What is the time complexity of binary search?", opts: ["O(n)", "O(log n)", "O(n²)", "O(1)"], ans: 1, src: "ARC" },
@@ -77,6 +78,12 @@
     else tier = Math.max(1, Math.min(2, Math.floor(score * 3)))
     resultTier = tier
     setBenchmarkTier(tier)
+    capture('minigame_completed', {
+      minigame: 'benchmark_eval',
+      score: rawFraction,
+      tier_achieved: tier,
+      phase: gameState.phase,
+    })
     evalPhase = 'done'
     resetAutoEval()
   }

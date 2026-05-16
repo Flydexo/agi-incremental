@@ -80,6 +80,12 @@
 
   function completeRound(perfect: boolean) {
     roundDone = true
+    capture('minigame_completed', {
+      minigame: 'data_labeling',
+      perfect,
+      combo_multiplier: comboMultiplier(),
+      phase: gameState.phase,
+    })
     if (perfect) {
       const prevCombo = combo
       combo = Math.min(combo + 1, MAX_COMBO)

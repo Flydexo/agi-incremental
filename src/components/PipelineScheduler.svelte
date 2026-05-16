@@ -1,5 +1,6 @@
 <script lang="ts">
   import { gameState } from '../state/game.svelte'
+  import { capture } from '../lib/analytics'
 
   // 4 pipeline stages, 8 time steps
   // Cell types: 'F' forward, 'B' backward, '_' bubble
@@ -78,6 +79,11 @@
       gameState.pipelineSchedulerDone = true
       gameState.pipelineBubbleBonus = 1 - (totalCells - bubblesBefore) / totalCells
       done = true
+      capture('minigame_completed', {
+        minigame: 'pipeline_scheduler',
+        bubble_bonus: gameState.pipelineBubbleBonus,
+        phase: gameState.phase,
+      })
     }
   }
 

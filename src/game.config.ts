@@ -212,5 +212,5 @@ export const CONFIG = {
   audio: {
     sfx_volume: 0.60, bgm_volume: 0.40, muted: false,
   },
-  posthog: { enabled: true, api_key: "" },
+  posthog: { enabled: true, api_key: (import.meta as any).env?.VITE_POSTHOG_KEY ?? "" },
 } as const

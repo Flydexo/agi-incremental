@@ -1,5 +1,6 @@
 <script lang="ts">
   import { gameState, applyDataQualityBonus } from '../state/game.svelte'
+  import { capture } from '../lib/analytics'
 
   interface Doc {
     id: number
@@ -44,6 +45,14 @@
     if (total > 0) {
       const ratio = correct / total
       applyDataQualityBonus(1.0 + ratio * 1.5)
+      if (total % 10 === 0) {
+        capture('minigame_completed', {
+          minigame: 'data_quality_filter',
+          accuracy: ratio,
+          quality_multiplier: gameState.dataQualityMultiplier,
+          phase: gameState.phase,
+        })
+      }
     }
   }
 

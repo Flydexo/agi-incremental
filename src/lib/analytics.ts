@@ -8,10 +8,11 @@ export async function initAnalytics(): Promise<void> {
     const ph = await import('posthog-js')
     posthog = ph.default
     posthog.init(CONFIG.posthog.api_key || 'phc_placeholder', {
-      api_host: 'https://app.posthog.com',
+      api_host: 'https://eu.i.posthog.com',
       autocapture: false,
       capture_pageview: false,
     })
+    await posthog.featureFlags.loadIfNeeded()
   } catch {
     // analytics non-critical
   }
@@ -22,4 +23,11 @@ export function capture(event: string, props: Record<string, unknown> = {}): voi
     ...props,
     experiment_id: CONFIG.meta.experiment_id,
   })
+}
+
+// Returns a PostHog feature flag payload value, or the fallback if flags aren't loaded.
+export function getFlag<T>(key: string, fallback: T): T {
+  if (!posthog) return fallback
+  const payload = posthog.getFeatureFlagPayload(key)
+  return (payload ?? fallback) as T
 }
